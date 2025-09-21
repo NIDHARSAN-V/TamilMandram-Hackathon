@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+python-multipart
+python-docx
+openai-whisper
+pydub
+noisereduce
+numpy
+soundfile
+aiofiles
+requests
+# optional diarization (heavy)
+pyannote.audio>=2.1
+torch  # install appropriate CPU/CUDA wheel manually if needed
