@@ -20,7 +20,6 @@ export default function RoomPage({ roomIdProp }) {
   const [generatedNotes, setGeneratedNotes] = useState("");
   const [generatedSummary, setGeneratedSummary] = useState("");
 
-  // Capture meeting date & time
   const meetingDateTime = new Date().toLocaleString();
 
   useEffect(() => {
@@ -29,7 +28,9 @@ export default function RoomPage({ roomIdProp }) {
 
     s.on("connect", () => console.log("socket connected", s.id));
     s.on("participants", (p) => setParticipants(p));
-    s.on("new_transcript", (t) => setTranscripts((prev) => [...prev, t]));
+    s.on("new_transcript", (t) =>
+      setTranscripts((prev) => [...prev, { ...t, id: Date.now() }])
+    );
     s.on("participant_joined", (p) =>
       setParticipants((prev) => ({ ...prev, [p.userId]: p }))
     );
@@ -56,7 +57,8 @@ export default function RoomPage({ roomIdProp }) {
   };
 
   const startRecording = async () => {
-    if (!navigator.mediaDevices?.getUserMedia) return alert("Browser doesn't support audio recording");
+    if (!navigator.mediaDevices?.getUserMedia)
+      return alert("Browser doesn't support audio recording");
     const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
     const mr = new MediaRecorder(stream, { mimeType: "audio/webm; codecs=opus" });
     mediaRecorderRef.current = mr;
@@ -74,7 +76,10 @@ export default function RoomPage({ roomIdProp }) {
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive")
+    if (
+      mediaRecorderRef.current &&
+      mediaRecorderRef.current.state !== "inactive"
+    )
       mediaRecorderRef.current.stop();
   };
 
@@ -91,13 +96,12 @@ export default function RoomPage({ roomIdProp }) {
     socket.emit("audio_blob", metadata, ab);
   };
 
-  // Include participants and date/time in the payload
   const buildPayload = () => ({
     segments: transcripts,
     metadata: {
       meetingDateTime,
-      participants: Object.values(participants).map(p => p.userName)
-    }
+      participants: Object.values(participants).map((p) => p.userName),
+    },
   });
 
   const handleGenerateNotes = async () => {
@@ -109,7 +113,7 @@ export default function RoomPage({ roomIdProp }) {
       });
       const data = await resp.json();
       setGeneratedNotes(data.notes);
-    } catch (e) {
+    } catch {
       alert("Failed to generate notes");
     }
   };
@@ -123,7 +127,7 @@ export default function RoomPage({ roomIdProp }) {
       });
       const data = await resp.json();
       setGeneratedSummary(data.summary);
-    } catch (e) {
+    } catch {
       alert("Failed to generate summary");
     }
   };
@@ -138,7 +142,7 @@ export default function RoomPage({ roomIdProp }) {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `meeting_notes_${meetingDateTime.replace(/[/:, ]/g,'_')}.docx`;
+    a.download = `meeting_notes_${meetingDateTime.replace(/[/:, ]/g, "_")}.docx`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
@@ -153,63 +157,296 @@ export default function RoomPage({ roomIdProp }) {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `summary_${meetingDateTime.replace(/[/:, ]/g,'_')}.docx`;
+    a.download = `summary_${meetingDateTime.replace(/[/:, ]/g, "_")}.docx`;
     a.click();
     window.URL.revokeObjectURL(url);
   };
 
   return (
-    <div style={{ maxWidth: 1000, margin: "16px auto", fontFamily: "sans-serif", padding: 12 }}>
-      <h2>Live Room — {roomId}</h2>
+    <div
+      style={{
+        maxWidth: 1000,
+        margin: "24px auto",
+        fontFamily: "Segoe UI, sans-serif",
+        padding: 20,
+        borderRadius: 16,
+        background: "rgba(255, 255, 255, 0.8)",
+        backdropFilter: "blur(10px)",
+        boxShadow: "0 8px 20px rgba(0,0,0,0.1)",
+        animation: "fadeIn 1s ease",
+      }}
+    >
+      <h2
+        style={{
+          textAlign: "center",
+          color: "#333",
+          marginBottom: 20,
+          fontSize: 28,
+          fontWeight: 700,
+        }}
+      >
+        Live Room — {roomId}
+      </h2>
+
       {!joined ? (
-        <div>
-          <input placeholder="Your display name" value={userName} onChange={(e)=>setUserName(e.target.value)} />
-          <button onClick={joinRoom}>Join Room</button>
+        <div style={{ textAlign: "center" }}>
+          <input
+            placeholder="Your display name"
+            value={userName}
+            onChange={(e) => setUserName(e.target.value)}
+            style={{
+              padding: "10px 14px",
+              borderRadius: 8,
+              border: "1px solid #ccc",
+              marginRight: 10,
+              outline: "none",
+              transition: "0.3s",
+            }}
+          />
+          <button
+            onClick={joinRoom}
+            style={{
+              padding: "10px 18px",
+              borderRadius: 8,
+              border: "none",
+              background: "#4CAF50",
+              color: "#fff",
+              cursor: "pointer",
+              transition: "0.3s",
+            }}
+          >
+            Join Room
+          </button>
         </div>
       ) : (
-        <div>
-          <strong>Joined as:</strong> {userName} <button onClick={leaveRoom}>Leave</button>
+        <div style={{ marginBottom: 20, textAlign: "center" }}>
+          <strong>Joined as:</strong> {userName}{" "}
+          <button
+            onClick={leaveRoom}
+            style={{
+              marginLeft: 10,
+              padding: "6px 12px",
+              borderRadius: 6,
+              border: "none",
+              background: "#f44336",
+              color: "#fff",
+              cursor: "pointer",
+              transition: "0.3s",
+            }}
+          >
+            Leave
+          </button>
         </div>
       )}
-      <div style={{ display: "flex", gap: 20 }}>
-        <div style={{ flex: 1 }}>
-          <h3>Participants</h3>
-          <ul>{Object.values(participants).map(p=><li key={p.userId}>{p.userName} {p.userId===userId?"(you)":""}</li>)}</ul>
-          <label>
-            <input type="checkbox" checked={doDenoise} onChange={(e)=>setDoDenoise(e.target.checked)} /> Apply denoise
-          </label>
-          <div>
-            <button onClick={recording?stopRecording:startRecording} disabled={!joined}>{recording?"Stop Recording":"Start Recording"}</button>
-          </div>
-          <div style={{ marginTop: 12 }}>
-            <button onClick={handleGenerateNotes}>Generate Meeting Notes</button>
-            <button onClick={handleGenerateSummary} style={{ marginLeft: 8 }}>Generate Summary</button>
-          </div>
 
-          {generatedNotes && (
+      <div style={{ display: "flex", gap: 20, marginTop: 20 }}>
+        {/* Left Panel */}
+        <div
+          style={{
+            flex: 1,
+            padding: 16,
+            borderRadius: 12,
+            background: "#fafafa",
+            boxShadow: "inset 0 2px 6px rgba(0,0,0,0.05)",
+          }}
+        >
+          <h3 style={{ marginBottom: 10 }}>Participants</h3>
+          <ul style={{ marginBottom: 10 }}>
+            {Object.values(participants).map((p) => (
+              <li
+                key={p.userId}
+                style={{
+                  padding: "6px 0",
+                  transition: "0.3s",
+                  fontWeight: p.userId === userId ? "bold" : "normal",
+                }}
+              >
+                {p.userName} {p.userId === userId ? "(you)" : ""}
+              </li>
+            ))}
+          </ul>
+          {joined && (
+            <>
+              <label style={{ display: "block", margin: "10px 0" }}>
+                <input
+                  type="checkbox"
+                  checked={doDenoise}
+                  onChange={(e) => setDoDenoise(e.target.checked)}
+                />{" "}
+                Apply denoise
+              </label>
+              <div>
+                <button
+                  onClick={recording ? stopRecording : startRecording}
+                  disabled={!joined}
+                  style={{
+                    padding: "10px 16px",
+                    borderRadius: 8,
+                    border: "none",
+                    background: recording ? "#f44336" : "#2196F3",
+                    color: "#fff",
+                    cursor: "pointer",
+                    marginBottom: 12,
+                    transition: "0.3s",
+                  }}
+                >
+                  {recording ? "Stop Recording" : "Start Recording"}
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Only show these after leaving */}
+          {!joined && (
             <div>
-              <h4>Meeting Notes (Tamil)</h4>
-              <pre>{generatedNotes}</pre>
-              <button onClick={handleDownloadNotes}>Download Notes as DOCX</button>
+              <button
+                onClick={handleGenerateNotes}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: "#673AB7",
+                  color: "#fff",
+                  cursor: "pointer",
+                  marginRight: 8,
+                  transition: "0.3s",
+                }}
+              >
+                Generate Meeting Notes
+              </button>
+              <button
+                onClick={handleGenerateSummary}
+                style={{
+                  padding: "8px 14px",
+                  borderRadius: 8,
+                  border: "none",
+                  background: "#009688",
+                  color: "#fff",
+                  cursor: "pointer",
+                  transition: "0.3s",
+                }}
+              >
+                Generate Summary
+              </button>
             </div>
           )}
 
-          {generatedSummary && (
-            <div>
+          {!joined && generatedNotes && (
+            <div style={{ marginTop: 20 }}>
+              <h4>Meeting Notes (Tamil)</h4>
+              <pre
+                style={{
+                  background: "#eee",
+                  padding: 10,
+                  borderRadius: 8,
+                  maxHeight: 200,
+                  overflow: "auto",
+                }}
+              >
+                {generatedNotes}
+              </pre>
+              <button
+                onClick={handleDownloadNotes}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 6,
+                  border: "none",
+                  background: "#4CAF50",
+                  color: "#fff",
+                  cursor: "pointer",
+                  marginTop: 8,
+                }}
+              >
+                Download Notes as DOCX
+              </button>
+            </div>
+          )}
+
+          {!joined && generatedSummary && (
+            <div style={{ marginTop: 20 }}>
               <h4>Summary (Tamil)</h4>
-              <pre>{generatedSummary}</pre>
-              <button onClick={handleDownloadSummary}>Download Summary as DOCX</button>
+              <pre
+                style={{
+                  background: "#eee",
+                  padding: 10,
+                  borderRadius: 8,
+                  maxHeight: 200,
+                  overflow: "auto",
+                }}
+              >
+                {generatedSummary}
+              </pre>
+              <button
+                onClick={handleDownloadSummary}
+                style={{
+                  padding: "6px 12px",
+                  borderRadius: 6,
+                  border: "none",
+                  background: "#FF9800",
+                  color: "#fff",
+                  cursor: "pointer",
+                  marginTop: 8,
+                }}
+              >
+                Download Summary as DOCX
+              </button>
             </div>
           )}
         </div>
 
-        <div style={{ flex: 2 }}>
+        {/* Right Panel */}
+        <div
+          style={{
+            flex: 2,
+            padding: 16,
+            borderRadius: 12,
+            background: "#fafafa",
+            boxShadow: "inset 0 2px 6px rgba(0,0,0,0.05)",
+          }}
+        >
           <h3>Live Transcripts</h3>
-          <div style={{ border:"1px solid #ddd", padding:12, height:400, overflowY:"auto" }}>
-            {transcripts.map((t,i)=><div key={i}><b>{t.speakerLabel||t.userName}</b>: {t.text}</div>)}
+          <div
+            style={{
+              border: "1px solid #ddd",
+              padding: 12,
+              height: 400,
+              overflowY: "auto",
+              borderRadius: 8,
+              background: "#fff",
+              transition: "all 0.3s ease-in-out",
+            }}
+          >
+            {transcripts.map((t, i) => (
+              <div
+                key={t.id || i}
+                style={{
+                  marginBottom: 6,
+                  padding: "6px 8px",
+                  borderRadius: 6,
+                  background: "rgba(0, 150, 136, 0.05)",
+                  animation: "fadeInUp 0.5s ease",
+                }}
+              >
+                <b>{t.speakerLabel || t.userName}</b>: {t.text}
+              </div>
+            ))}
           </div>
         </div>
       </div>
+
+      {/* Animations */}
+      <style>
+        {`
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+        `}
+      </style>
     </div>
   );
 }
