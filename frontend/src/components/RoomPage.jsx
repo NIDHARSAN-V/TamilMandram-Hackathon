@@ -162,6 +162,26 @@ export default function RoomPage({ roomIdProp }) {
     window.URL.revokeObjectURL(url);
   };
 
+  // ✅ New function to download live transcripts
+  const handleDownloadTranscripts = async () => {
+    try {
+      const resp = await fetch(`${API_URL}/api/download_transcripts_docx`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(buildPayload()),
+      });
+      const blob = await resp.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `transcripts_${meetingDateTime.replace(/[/:, ]/g, "_")}.docx`;
+      a.click();
+      window.URL.revokeObjectURL(url);
+    } catch {
+      alert("Failed to download transcripts");
+    }
+  };
+
   return (
     <div
       style={{
@@ -296,38 +316,57 @@ export default function RoomPage({ roomIdProp }) {
             </>
           )}
 
-          {/* Only show these after leaving */}
-          {!joined && (
-            <div>
+          {/* Show buttons after leaving or anytime */}
+          {transcripts.length > 0 && (
+            <div style={{ marginTop: 20, textAlign: "center" }}>
               <button
-                onClick={handleGenerateNotes}
+                onClick={handleDownloadTranscripts}
                 style={{
                   padding: "8px 14px",
                   borderRadius: 8,
                   border: "none",
-                  background: "#673AB7",
-                  color: "#fff",
-                  cursor: "pointer",
-                  marginRight: 8,
-                  transition: "0.3s",
-                }}
-              >
-                Generate Meeting Notes
-              </button>
-              <button
-                onClick={handleGenerateSummary}
-                style={{
-                  padding: "8px 14px",
-                  borderRadius: 8,
-                  border: "none",
-                  background: "#009688",
+                  background: "#FF5722",
                   color: "#fff",
                   cursor: "pointer",
                   transition: "0.3s",
+                  marginBottom: 8,
                 }}
               >
-                Generate Summary
+                Download Transcripts as DOCX
               </button>
+              {!joined && (
+                <>
+                  <button
+                    onClick={handleGenerateNotes}
+                    style={{
+                      padding: "8px 14px",
+                      borderRadius: 8,
+                      border: "none",
+                      background: "#673AB7",
+                      color: "#fff",
+                      cursor: "pointer",
+                      marginRight: 8,
+                      transition: "0.3s",
+                    }}
+                  >
+                    Generate Meeting Notes
+                  </button>
+                  <button
+                    onClick={handleGenerateSummary}
+                    style={{
+                      padding: "8px 14px",
+                      borderRadius: 8,
+                      border: "none",
+                      background: "#009688",
+                      color: "#fff",
+                      cursor: "pointer",
+                      transition: "0.3s",
+                    }}
+                  >
+                    Generate Summary
+                  </button>
+                </>
+              )}
             </div>
           )}
 

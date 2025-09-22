@@ -14,6 +14,7 @@ import openai
 from io import BytesIO
 from docx import Document
 from fastapi.responses import StreamingResponse
+from deep_translator import GoogleTranslator
 
 
 
@@ -111,21 +112,32 @@ def merge(whisper_segments, diarization_list=None):
         merged.append({"speaker": tamil_label, "start": s_start, "end": s_end, "text": text})
     return merged
 
+
+
+
+
+
 @app.post("/api/transcribe_text")
 async def transcribe_text(
     audio: UploadFile = File(...),
+    language: Optional[str] = Form("ta"),  # target language
     do_denoise: Optional[bool] = Form(True),
     do_diarize: Optional[bool] = Form(False)
 ):
     """
     Returns structured JSON segments (speaker, start, end, text) for in-browser editing.
+    - If language="ta", uses Whisper directly.
+    - Else, transcribes in English and translates to target language.
     """
     uid = str(uuid.uuid4())
     raw_ext = Path(audio.filename).suffix or ".webm"
     raw_path = f"{UPLOAD_DIR}/{uid}_raw{raw_ext}"
+    
+    # Save uploaded audio
     with open(raw_path, "wb") as f:
         f.write(await audio.read())
 
+    # Convert to WAV
     wav_path = f"{UPLOAD_DIR}/{uid}.wav"
     normalize_to_wav(raw_path, wav_path, target_sr=16000)
 
@@ -138,22 +150,35 @@ async def transcribe_text(
         except Exception:
             processed = wav_path
 
-    # Whisper transcription
-    whisper_result = run_whisper(processed, language="ta")
-    segments = whisper_result.get("segments", [])
+    # Transcription
+    if language.lower() == "ta":
+        # Tamil: direct Whisper transcription
+        whisper_result = run_whisper(processed, language="ta")
+        segments = whisper_result.get("segments", [])
+    else:
+        # Other languages: transcribe in English first
+        whisper_result = run_whisper(processed, language="en")
+        segments = whisper_result.get("segments", [])
 
+        # Translate each segment to target language
+        translator = GoogleTranslator(source='auto', target=language)
+        for seg in segments:
+            if seg.get("text"):
+                seg["text"] = translator.translate(seg["text"])
+
+    # Speaker diarization (optional)
     diarization_list = None
     if do_diarize:
         try:
             diarization_list = run_pyannote(processed)
-        except Exception as e:
+        except Exception:
             diarization_list = None
-            
-            
 
     merged = merge(segments, diarization_list)
     print(f"Transcription completed: {len(merged)} segments.")
     return JSONResponse({"segments": merged})
+
+
 
 
 @app.post("/api/make_docx")

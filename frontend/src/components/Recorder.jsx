@@ -9,6 +9,7 @@ export default function Recorder() {
   const [loading, setLoading] = useState(false);
   const [doDiarize, setDoDiarize] = useState(false);
   const [doDenoise, setDoDenoise] = useState(true);
+  const [language, setLanguage] = useState("ta"); // default Tamil
 
   async function handleTranscribe() {
     if (!audioFile) {
@@ -20,6 +21,8 @@ export default function Recorder() {
     form.append("audio", audioFile);
     form.append("do_diarize", doDiarize ? "true" : "false");
     form.append("do_denoise", doDenoise ? "true" : "false");
+    form.append("language", language); // send selected language to backend
+
     try {
       const res = await postTranscribeForm(form);
       const data = res.data;
@@ -55,7 +58,7 @@ export default function Recorder() {
           WebkitTextFillColor: "transparent",
         }}
       >
-        🎧 தமிழ் ஆடியோ → Word (.docx)
+        🎧 Audio → Word (.docx)
       </h1>
 
       {!segments ? (
@@ -65,6 +68,21 @@ export default function Recorder() {
 
           {/* Options */}
           <div style={{ marginTop: 14 }}>
+            {/* Language Selector */}
+            <label style={{ display: "block", marginBottom: 8, fontSize: 15 }}>
+              Select Language:
+              <select
+                value={language}
+                onChange={(e) => setLanguage(e.target.value)}
+                style={{ marginLeft: 8, padding: 4, fontSize: 15 }}
+              >
+                <option value="ta">Tamil 🇮🇳</option>
+                <option value="en">English 🇺🇸</option>
+                <option value="hi">Hindi 🇮🇳</option>
+                <option value="other">Other</option>
+              </select>
+            </label>
+
             <label
               style={{
                 display: "block",
@@ -144,7 +162,7 @@ export default function Recorder() {
             <span style={{ color: "#6e8efb", fontWeight: 600 }}>
               edit text
             </span>{" "}
-            and export as a Tamil <code>.docx</code>.
+            and export as a <code>.docx</code>.
           </div>
         </div>
       ) : (
