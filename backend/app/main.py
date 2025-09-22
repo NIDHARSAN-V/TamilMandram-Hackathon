@@ -236,15 +236,16 @@ def call_groq_model(prompt: str, model: str = "llama-3.3-70b-versatile") -> str:
         print("Groq API error:", str(e))
         return f"Error calling Groq API: {str(e)}"
 
-
 @app.post("/api/min_meet")
 async def generate_meeting_notes(segments: dict = Body(...)):
     if not segments or "segments" not in segments:
         raise HTTPException(status_code=400, detail="Missing 'segments'")
     
+    language = segments.get("language", "ta")  # default Tamil
+
     valid_segments = []
     for s in segments["segments"]:
-        speaker = s.get("speaker", "பேச்சாளர் ?")
+        speaker = s.get("speaker", "பேச்சாளர் ?") if language == "ta" else s.get("speaker", "Speaker ?")
         text = s.get("text", "").strip()
         if text:
             valid_segments.append(f"{speaker}: {text}")
@@ -253,10 +254,15 @@ async def generate_meeting_notes(segments: dict = Body(...)):
         raise HTTPException(status_code=400, detail="No valid segments with text found")
     
     full_text = "\n".join(valid_segments)
-    prompt = f"இந்த உரையை தமிழில் சுருக்கமாகக் குறிப்புகள் (bullet points) வடிவில் உருவாக்கவும்:\n{full_text}"
+    
+    if language == "ta":
+        prompt = f"இந்த உரையை தமிழில் சுருக்கமாகக் குறிப்புகள் (bullet points) வடிவில் உருவாக்கவும்:\n{full_text}"
+    else:
+        prompt = f"Summarize the following text in English as bullet points:\n{full_text}"
     
     notes = call_groq_model(prompt)
     return {"notes": notes}
+
 
 
 @app.post("/api/summary")
@@ -264,9 +270,11 @@ async def generate_summary(segments: dict = Body(...)):
     if not segments or "segments" not in segments:
         raise HTTPException(status_code=400, detail="Missing 'segments'")
     
+    language = segments.get("language", "ta")  # default Tamil
+
     valid_segments = []
     for s in segments["segments"]:
-        speaker = s.get("speaker", "பேச்சாளர் ?")
+        speaker = s.get("speaker", "பேச்சாளர் ?") if language == "ta" else s.get("speaker", "Speaker ?")
         text = s.get("text", "").strip()
         if text:
             valid_segments.append(f"{speaker}: {text}")
@@ -275,12 +283,14 @@ async def generate_summary(segments: dict = Body(...)):
         raise HTTPException(status_code=400, detail="No valid segments with text found")
     
     full_text = "\n".join(valid_segments)
-    prompt = f"இந்த உரையை தமிழில் சுருக்கமாக விவரிக்கவும்:\n{full_text}"
+    
+    if language == "ta":
+        prompt = f"இந்த உரையை தமிழில் சுருக்கமாக விவரிக்கவும்:\n{full_text}"
+    else:
+        prompt = f"Summarize the following text in English:\n{full_text}"
     
     summary = call_groq_model(prompt)
     return {"summary": summary}
-
-
 
 
 def build_docx_from_text(text: str, title: str = "Document") -> BytesIO:

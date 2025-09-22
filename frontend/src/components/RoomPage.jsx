@@ -16,6 +16,8 @@ export default function RoomPage({ roomIdProp }) {
   const [recording, setRecording] = useState(false);
   const [doDenoise, setDoDenoise] = useState(true);
   const roomId = roomIdProp || "default-room";
+  const [language, setLanguage] = useState("ta"); // "ta" for Tamil, "en" for English
+
 
   const [generatedNotes, setGeneratedNotes] = useState("");
   const [generatedSummary, setGeneratedSummary] = useState("");
@@ -98,6 +100,7 @@ export default function RoomPage({ roomIdProp }) {
 
   const buildPayload = () => ({
     segments: transcripts,
+    language,
     metadata: {
       meetingDateTime,
       participants: Object.values(participants).map((p) => p.userName),
@@ -334,6 +337,19 @@ export default function RoomPage({ roomIdProp }) {
               >
                 Download Transcripts as DOCX
               </button>
+
+              <label>
+  Select Language:{" "}
+  <select
+    value={language}
+    onChange={(e) => setLanguage(e.target.value)}
+    style={{ marginBottom: 12, padding: "6px 8px", borderRadius: 6 }}
+  >
+    <option value="ta">Tamil</option>
+    <option value="en">English</option>
+  </select>
+</label>
+
               {!joined && (
                 <>
                   <button
