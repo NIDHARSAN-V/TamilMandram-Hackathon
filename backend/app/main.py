@@ -236,6 +236,10 @@ def call_groq_model(prompt: str, model: str = "llama-3.3-70b-versatile") -> str:
         print("Groq API error:", str(e))
         return f"Error calling Groq API: {str(e)}"
 
+
+
+from fastapi import Body, HTTPException, FastAPI
+
 @app.post("/api/min_meet")
 async def generate_meeting_notes(segments: dict = Body(...)):
     if not segments or "segments" not in segments:
@@ -243,6 +247,7 @@ async def generate_meeting_notes(segments: dict = Body(...)):
     
     language = segments.get("language", "ta")  # default Tamil
 
+    # Build valid segments with speaker and text
     valid_segments = []
     for s in segments["segments"]:
         speaker = s.get("speaker", "பேச்சாளர் ?") if language == "ta" else s.get("speaker", "Speaker ?")
@@ -255,14 +260,24 @@ async def generate_meeting_notes(segments: dict = Body(...)):
     
     full_text = "\n".join(valid_segments)
     
+    # Prepare prompt for MoM generation
     if language == "ta":
-        prompt = f"இந்த உரையை தமிழில் சுருக்கமாகக் குறிப்புகள் (bullet points) வடிவில் உருவாக்கவும்:\n{full_text}"
+        prompt = (
+            f"இந்த உரையை முழுமையான கூட்ட நொடிகள் (Minutes of Meeting) வடிவில் உருவாக்கவும். "
+            f"இதில் முக்கியமான விவாதங்கள், முடிவுகள், செயல்பாடுகள் (action items) ஆகியவற்றை "
+            f"சுருக்கமாக குறிப்பிடவும்:\n{full_text}"
+        )
     else:
-        prompt = f"Summarize the following text in English as bullet points:\n{full_text}"
+        prompt = (
+            f"Generate a detailed Minutes of Meeting report from the following text. "
+            f"Include key discussions, decisions made, and action items:\n{full_text}"
+        )
     
-    notes = call_groq_model(prompt)
-    return {"notes": notes}
-
+    # Call your model (Groq or any LLM) to generate the report
+    mom_report = call_groq_model(prompt)
+    print(mom_report)
+    
+    return {"minutes_of_meeting": mom_report}
 
 
 @app.post("/api/summary")

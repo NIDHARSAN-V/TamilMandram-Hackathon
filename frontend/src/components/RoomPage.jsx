@@ -115,7 +115,8 @@ export default function RoomPage({ roomIdProp }) {
         body: JSON.stringify(buildPayload()),
       });
       const data = await resp.json();
-      setGeneratedNotes(data.notes);
+      console.log(data)
+      setGeneratedNotes(data.minutes_of_meeting);
     } catch {
       alert("Failed to generate notes");
     }
